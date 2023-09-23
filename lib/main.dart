@@ -1,10 +1,14 @@
-import 'package:flutter/material.dart';
-import 'package:http/http.dart';
 import 'package:week_plan_flutter/io.dart';
 import 'package:week_plan_flutter/model.dart';
 import 'package:week_plan_flutter/period.dart';
 import 'package:week_plan_flutter/ticker.dart';
 import 'package:week_plan_flutter/time.dart';
+
+import 'package:week_plan_flutter/period_data.dart';
+import 'package:week_plan_flutter/time_data.dart';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart';
 
 const _normalColor = Color(0xff3700b3);
 const _textColor = Color(0xfffefefe);
@@ -69,35 +73,33 @@ class _MyHomePageState extends State<MyHomePage> {
   final _rowHeightMultiplier = 1.5;
   final _rowSeparatorMultiplier = 0.25;
 
+  final DataProvider dataProvider = DataProviders.remote();
   bool shortenedTimeSlots = false;
   dynamic weekPlanData;
-  DateTime time = _currentTime;
-  late AbstractTicker ticker;
+  DateTime time = currentTime;
+  late Ticker ticker;
   DateTime? dataTimeStamp;
-  String? dataSource;
 
-  String get _dataVersion =>
+  String get dataVersion =>
       (dataTimeStamp?.toString() ?? "⸺").replaceFirst(RegExp(r"\.000Z"), "Z");
 
   @override
   void initState() {
     super.initState();
-    weekPlanData = DefaultPlanProvider().getPlan();
-    readPlanData().then(_handleDataResponse).onError(_handleError);
-    ticker = PeriodicTicker(_updateCurrentTime);
+    weekPlanData = PlanProviders.dummy().getPlanData(on: _timeSlots);
+    dataProvider.get().then(_handleDataResponse).onError(_handleError);
+    ticker = Tickers.periodic(_updateCurrentTime, const Duration(minutes: 1));
   }
+
+  List<TimeSlot> get _timeSlots => getTimeSlots(shortened: shortenedTimeSlots);
 
   void _handleDataResponse(DataResponse response) => setState(() {
         dataTimeStamp = response.lastModified;
-        dataSource = switch (response.source) {
-          DataSource.url => "zewnętrzne",
-          DataSource.asset => "wewnętrzne"
-        };
-        weekPlanData = parsePlanFrom(
-            response.content, getTimeSlots(shortened: shortenedTimeSlots));
+        weekPlanData =
+            PlanProviders.parsing(response.content).getPlanData(on: _timeSlots);
       });
 
-  void _updateCurrentTime() => setState(() => time = _currentTime);
+  void _updateCurrentTime() => setState(() => time = currentTime);
 
   void _handleError(Object? error, StackTrace stackTrace) {
     if (error is ClientException) {
@@ -118,7 +120,7 @@ class _MyHomePageState extends State<MyHomePage> {
         content: Text(text),
       ));
 
-  static DateTime get _currentTime => DateTime.now();
+  static DateTime get currentTime => DateTime.now();
 
   TextTheme get _textTheme => Theme.of(context).textTheme;
 
@@ -257,7 +259,7 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
             )),
             PopupMenuItem<int>(
-              child: Text("Wersja danych\n$_dataVersion\n(dane $dataSource)"),
+              child: Text("Wersja danych\n$dataVersion"),
             )
           ];
         },
@@ -267,7 +269,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (weekPlanData == null) {
       return [];
     }
-    final weekPlan = WeekPlan.create(
+    final weekPlan = WeekPlanImpl.create(
         getTimeSlots(shortened: shortenedTimeSlots), weekPlanData,
         includeRecess: true);
     final weekDays = weekPlan.weekDays;
@@ -293,11 +295,12 @@ class _MyHomePageState extends State<MyHomePage> {
         // content row
         rows.add(TableRow(children: [
           _dayTimeRow(timeSlot, highlighted: isActive),
-          ...weekDays.map((e) {
-            final content = weekPlan.get(e, timeSlot);
-            final highlight = isActive && e == currentWeekDay;
+          ...weekDays.map((weekDay) {
+            final content = weekPlan.get(on: weekDay, at: timeSlot);
+            final highlight = isActive && weekDay == currentWeekDay;
             return _columnsPadding(content != null
-                ? _row(content.$1, content.$2, highlighted: highlight)
+                ? _row(content.subject, content.location,
+                    highlighted: highlight)
                 : _emptyRow(highlighted: highlight));
           })
         ]));

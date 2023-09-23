@@ -1,130 +1,47 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:week_plan_flutter/time.dart';
 import 'package:week_plan_flutter/period.dart';
 import 'dart:math';
 import 'dart:convert';
 import 'dart:core';
 
-typedef IntPair = (int, int);
-typedef IntPairPair = (IntPair, IntPair);
+class SlotContent {
+  final String subject;
+  final String location;
+  SlotContent(this.subject, this.location);
+  factory SlotContent.empty() => SlotContent('', '');
+  @override
+  bool operator ==(Object other) =>
+      other is SlotContent &&
+      subject == other.subject &&
+      location == other.location;
+  @override
+  int get hashCode => Object.hash(subject, location);
+}
 
-const List<IntPairPair> _normalTimeSlots = [
-  ((07, 10), (07, 55)),
-  ((08, 00), (08, 45)),
-  ((08, 50), (09, 35)),
-  ((09, 45), (10, 30)),
-  ((10, 40), (11, 25)),
-  ((11, 35), (12, 20)),
-  ((12, 40), (13, 25)),
-  ((13, 45), (14, 30)),
-  ((14, 40), (15, 25)),
-  ((15, 35), (16, 20)),
-  ((16, 25), (17, 10)),
-  ((17, 15), (18, 00)),
-];
+abstract class WeekPlan {
+  Iterable<WeekDay> get weekDays;
+  Iterable<TimeSlot> get timeSlots;
+  SlotContent? get({required WeekDay on, required TimeSlot at});
+}
 
-const List<IntPairPair> _shortenedTimeSlots = [
-  ((07, 25), (07, 55)),
-  ((08, 00), (08, 30)),
-  ((08, 35), (09, 05)),
-  ((09, 10), (09, 40)),
-  ((09, 50), (10, 20)),
-  ((10, 30), (11, 00)),
-  ((11, 20), (11, 50)),
-  ((12, 10), (12, 40)),
-  ((12, 50), (13, 20)),
-  ((13, 25), (13, 55)),
-  ((14, 00), (14, 30)),
-  ((14, 35), (15, 05)),
-];
+class WeekPlanProvider {
+  WeekPlan from(PlanData data, List<TimeSlot> timeSlots) =>
+      WeekPlanImpl.create(timeSlots, data);
+}
 
-Iterable<TimeSlot> parseTimeSlots(Iterable<IntPairPair> input) => input
-    .map((e) => TimeSlot(DayTime.fromTuple(e.$1), DayTime.fromTuple(e.$2)))
-    .toList(growable: false);
+typedef PlanData = Map<WeekDay, Map<int, SlotContent>>;
 
-List<TimeSlot> getTimeSlots({bool shortened = false}) =>
-    parseTimeSlots(shortened ? _shortenedTimeSlots : _normalTimeSlots)
-        .toList(growable: false);
+abstract class PlanProvider {
+  PlanData getPlanData({required List<TimeSlot> on});
+}
 
-const _weekPlan = {
-  WeekDay.monday: {
-    1: ("Pol", "114"),
-    2: ("Bio", "209"),
-    3: ("Mat", "28"),
-    4: ("Ang", "204"),
-    5: ("WF", "Hala"),
-  },
-  WeekDay.tuesday: {
-    2: ("Hist", "120"),
-    3: ("Pol", "114"),
-    4: ("GW", "209"),
-    5: ("Mat", "28"),
-    6: ("WF", "Hala"),
-    7: ("Rel", "Mult"),
-  },
-  WeekDay.wednesday: {
-    2: ("Pol", "114"),
-    3: ("Ang", "207"),
-    4: ("Hist", "120"),
-    5: ("Mat", "28"),
-  },
-  WeekDay.thursday: {
-    1: ("Geo", "209"),
-    2: ("Pol", "114"),
-    3: ("Inf", "204"),
-    4: ("Mat", "28"),
-    5: ("WF", "Hala"),
-    6: ("Inn", "Mult"),
-  },
-  WeekDay.friday: {
-    2: ("Tech", "101"),
-    3: ("Plas", "101"),
-    4: ("Pol", "114"),
-    5: ("WF", "Hala"),
-    6: ("Ang", "207"),
-    7: ("Muz", "101"),
-  },
-};
+class PlanProviders {
+  static PlanProvider dummy() => _DefaultPlanProvider();
+  static PlanProvider parsing(String text) => _ParsingPlanProvider(text);
+}
 
-/*const _weekPlanExt = {
-  WeekDay.monday: {
-    1: ("polski", "114"),
-    2: ("biologia", "209"),
-    3: ("matematyka", "28"),
-    4: ("angielski", "204"),
-    5: ("WF", "Hala"),
-  },
-  WeekDay.tuesday: {
-    2: ("historia", "120"),
-    3: ("polski", "114"),
-    4: ("GW", "209"),
-    5: ("matematyka", "28"),
-    6: ("WF", "Hala"),
-    7: ("religia", "Mult"),
-  },
-  WeekDay.wednesday: {
-    2: ("polski", "114"),
-    3: ("angielski", "207"),
-    4: ("historia", "120"),
-    5: ("matematyka", "28"),
-  },
-  WeekDay.thursday: {
-    1: ("geografia", "209"),
-    2: ("polski", "114"),
-    3: ("informatyka", "204"),
-    4: ("matematyka", "28"),
-    5: ("WF", "Hala"),
-    6: ("innowacja", "Mult"),
-  },
-  WeekDay.friday: {
-    2: ("technika", "101"),
-    3: ("plastyka", "101"),
-    4: ("polski", "114"),
-    5: ("WF", "Hala"),
-    6: ("angielski", "207"),
-    7: ("muzka", "101"),
-  },
-};*/
+// implementation
 
 class _Key {
   final WeekDay weekDay;
@@ -134,25 +51,26 @@ class _Key {
   @override
   bool operator ==(Object other) =>
       other is _Key && weekDay == other.weekDay && timeSlot == other.timeSlot;
-
   @override
   int get hashCode => Object.hash(weekDay, timeSlot);
 }
 
-typedef SlotContentType = (String, String);
-
-class WeekPlan {
+@visibleForTesting
+class WeekPlanImpl implements WeekPlan {
+  @override
   final Iterable<WeekDay> weekDays;
+  @override
   final Iterable<TimeSlot> timeSlots;
-  final Map<_Key, SlotContentType> _data;
+  final Map<_Key, SlotContent> _data;
 
-  const WeekPlan(this.weekDays, this.timeSlots, this._data);
+  const WeekPlanImpl(this.weekDays, this.timeSlots, this._data);
 
-  SlotContentType? get(WeekDay weekDay, TimeSlot timeSlot) =>
-      _data[_Key(weekDay, timeSlot)];
+  @override
+  SlotContent? get({required WeekDay on, required TimeSlot at}) =>
+      _data[_Key(on, at)];
 
-  factory WeekPlan.create(
-      List<TimeSlot> timeSlots, Map<WeekDay, Map<int, SlotContentType>> plan,
+  factory WeekPlanImpl.create(
+      List<TimeSlot> timeSlots, Map<WeekDay, Map<int, SlotContent>> plan,
       {bool includeRecess = false}) {
     assert(timeSlots.isNotEmpty);
 
@@ -165,7 +83,7 @@ class WeekPlan {
     WeekDay minDay = WeekDay.sunday;
     WeekDay maxDay = WeekDay.monday;
 
-    Map<_Key, SlotContentType> weekPlan = {};
+    Map<_Key, SlotContent> weekPlan = {};
 
     for (final weekDay in plan.keys) {
       // compute minimal and maximal day of week used in plan
@@ -189,7 +107,7 @@ class WeekPlan {
         .where((element) => minIndex <= element.$1 && element.$1 <= maxIndex)
         .map((e) => e.$2);
 
-    return WeekPlan(
+    return WeekPlanImpl(
         // remove unused days
         WeekDay.values
             .where((element) => minDay <= element && element <= maxDay)
@@ -200,84 +118,76 @@ class WeekPlan {
   }
 }
 
-typedef Plan = Map<WeekDay, Map<int, SlotContentType>>;
-
-abstract class PlanProvider {
-  Plan getPlan();
-}
-
-class DefaultPlanProvider extends PlanProvider {
-  final List<TimeSlot> _timeSlots = getTimeSlots();
-
+class _DefaultPlanProvider extends PlanProvider {
   @override
-  Plan getPlan() {
-    Plan data = {};
+  PlanData getPlanData({required List<TimeSlot> on}) {
+    PlanData data = {};
     for (final weekDay in WeekDay.values) {
       data.putIfAbsent(weekDay, () => {});
-      for (var i = 0; i < _timeSlots.length; ++i) {
-        data[weekDay]![i] = ('', '');
+      for (var i = 0; i < on.length; ++i) {
+        data[weekDay]![i] = SlotContent.empty();
       }
     }
     return data;
   }
 }
 
-class HardcodedPlanProvider extends PlanProvider {
+class _ParsingPlanProvider extends PlanProvider {
+  final String _text;
+  _ParsingPlanProvider(this._text);
+
   @override
-  Plan getPlan() => _weekPlan;
-}
+  PlanData getPlanData({required List<TimeSlot> on}) {
+    List<WeekDay> weekDays = [];
+    PlanData data = {};
 
-/// Parse plan from given [text], matching time slots provided as [timeSlots].
-Plan parsePlanFrom(String text, List<TimeSlot> timeSlots) {
-  List<WeekDay> weekDays = [];
-  Plan data = {};
-
-  final lines = const LineSplitter().convert(text);
-  for (final line in lines) {
-    if (line.trim().isEmpty) {
-      continue;
-    }
-    final entries = line.split('|').map((e) => e.trim());
-
-    if (weekDays.isEmpty) {
-      weekDays = entries
-          .skip(1) // first entry is empty
-          .map(parseWeekDay)
-          .whereType<WeekDay>()
-          .toList(growable: false);
-    } else {
-      final expectedColumns = 2 + weekDays.length;
-      if (entries.length != expectedColumns) {
-        throw FormatException(
-            'Expected $expectedColumns columns in `$line`, got ${entries.length}!');
+    final lines = const LineSplitter().convert(_text);
+    for (final line in lines) {
+      if (line.trim().isEmpty) {
+        continue;
       }
-      final from = parseDayTime(entries.elementAt(0));
-      final until = parseDayTime(entries.elementAt(1));
-      if (from >= until) {
-        throw FormatException(
-            'Left value `$from` is not less than right value `$until`!');
-      }
-      final slot = TimeSlot(from, until);
-      final slotIndex = timeSlots.indexOf(slot);
-      if (slotIndex < 0) {
-        throw FormatException('Unexpected time slot $slot!');
-      }
+      final entries = line.split('|').map((e) => e.trim());
 
-      for (var index = 2; index < entries.length; ++index) {
-        final content = parseNameLocation(entries.elementAt(index));
-        final weekDay = weekDays.elementAt(index - 2);
-        if (content != null) {
-          data.putIfAbsent(weekDay, () => {});
-          data[weekDay]![slotIndex] = content;
+      if (weekDays.isEmpty) {
+        weekDays = entries
+            .skip(1) // first entry is empty
+            .map(parseWeekDay)
+            .whereType<WeekDay>()
+            .toList(growable: false);
+      } else {
+        final expectedColumns = 2 + weekDays.length;
+        if (entries.length != expectedColumns) {
+          throw FormatException(
+              'Expected $expectedColumns columns in `$line`, got ${entries.length}!');
+        }
+        final from = parseDayTime(entries.elementAt(0));
+        final until = parseDayTime(entries.elementAt(1));
+        if (from >= until) {
+          throw FormatException(
+              'Left value `$from` is not less than right value `$until`!');
+        }
+        final slot = TimeSlot(from, until);
+        final slotIndex = on.indexOf(slot);
+        if (slotIndex < 0) {
+          throw FormatException('Unexpected time slot $slot!');
+        }
+
+        for (var index = 2; index < entries.length; ++index) {
+          final content = parseNameLocation(entries.elementAt(index));
+          final weekDay = weekDays.elementAt(index - 2);
+          if (content != null) {
+            data.putIfAbsent(weekDay, () => {});
+            data[weekDay]![slotIndex] = content;
+          }
         }
       }
     }
+    return data;
   }
-  return data;
 }
 
 @visibleForTesting
-SlotContentType? parseNameLocation(String text) {
+SlotContent? parseNameLocation(String text) {
   if (text.isEmpty) {
     return null;
   }
@@ -287,7 +197,7 @@ SlotContentType? parseNameLocation(String text) {
     throw FormatException(
         "Expected 2 entries, got ${entries.length} in $text!");
   }
-  return (entries.elementAt(0), entries.elementAt(1));
+  return SlotContent(entries.elementAt(0), entries.elementAt(1));
 }
 
 @visibleForTesting

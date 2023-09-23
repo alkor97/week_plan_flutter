@@ -1,28 +1,38 @@
 import 'dart:io';
 import 'package:http/http.dart' as http;
 
-enum DataSource { url, asset }
-
 class DataResponse {
   String content;
   DateTime? lastModified;
-  DataSource source;
-  DataResponse(this.content, this.lastModified, this.source);
+  DataResponse(this.content, this.lastModified);
 }
 
-Future<DataResponse> _readDataFromUrl(Uri uri) async {
-  final response = await http.get(uri);
-  final lastModified = response.headers['last-modified']?.parseHttpDate();
-  return DataResponse(response.body, lastModified, DataSource.url);
+abstract class DataProvider {
+  Future<DataResponse> get();
 }
 
-Future<DataResponse> readPlanData() async {
-  final remoteUri = Uri.parse("http://alkor.info/plan/plan.txt");
-  final localUri = Uri.parse("assets/data/plan.txt");
-  return _readDataFromUrl(
-      Uri.base.scheme.startsWith("http") && Uri.base.host != remoteUri.host
-          ? localUri
-          : remoteUri);
+class DataProviders {
+  static DataProvider remote() => _RemoteDataProvider();
+}
+
+// implementation
+
+class _RemoteDataProvider implements DataProvider {
+  @override
+  Future<DataResponse> get() {
+    final remoteUri = Uri.parse("http://alkor.info/plan/plan.txt");
+    final localUri = Uri.parse("data/plan.txt");
+    return _readDataFromUrl(
+        Uri.base.scheme.startsWith("http") && Uri.base.host != remoteUri.host
+            ? localUri
+            : remoteUri);
+  }
+
+  Future<DataResponse> _readDataFromUrl(Uri uri) async {
+    final response = await http.get(uri);
+    final lastModified = response.headers['last-modified']?.parseHttpDate();
+    return DataResponse(response.body, lastModified);
+  }
 }
 
 extension StringExtensions on String {

@@ -1,18 +1,11 @@
 import 'package:week_plan_flutter/model.dart';
 import 'package:week_plan_flutter/time.dart';
+import 'package:week_plan_flutter/period_data.dart';
 
 import 'package:test/test.dart';
 import 'dart:io';
 
 void main() {
-  test('test week plan', () {
-    final result =
-        WeekPlan.create(getTimeSlots(), HardcodedPlanProvider().getPlan());
-    print("periods:");
-    result.timeSlots.forEach(print);
-    print("days:");
-    result.weekDays.forEach(print);
-  });
   test('week day parsing', () {
     expect(() => parseWeekDay('abc'), throwsFormatException);
     expect(parseWeekDay("tuesday"), WeekDay.tuesday);
@@ -34,8 +27,9 @@ void main() {
   });
   test('plan parsing', () async {
     final text = await File('data/plan.txt').readAsString();
-    final weekPlan = parsePlanFrom(text, getTimeSlots());
+    final weekPlan =
+        PlanProviders.parsing(text).getPlanData(on: getTimeSlots());
     expect(weekPlan.keys.toSet(), WeekDay.values.take(5).toSet());
-    expect(weekPlan[WeekDay.wednesday]![4], ('Hist', '120'));
+    expect(weekPlan[WeekDay.wednesday]![4], SlotContent('Hist', '120'));
   });
 }

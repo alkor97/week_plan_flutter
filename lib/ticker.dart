@@ -2,11 +2,11 @@ import 'package:week_plan_flutter/model.dart';
 import 'package:week_plan_flutter/time.dart';
 import 'dart:async';
 
-abstract class AbstractTicker {
+abstract class Ticker {
   final void Function() _callback;
   late Timer _timer;
 
-  AbstractTicker(void Function() callback) : _callback = callback {
+  Ticker(void Function() callback) : _callback = callback {
     _timer = _createTimer(this);
   }
 
@@ -16,7 +16,7 @@ abstract class AbstractTicker {
     _timer = _createTimer(this);
   }
 
-  Timer _createTimer(AbstractTicker ticker) {
+  Timer _createTimer(Ticker ticker) {
     return Timer(nextTick(), () => ticker._onTick());
   }
 
@@ -30,11 +30,20 @@ abstract class AbstractTicker {
   }
 }
 
-class PeriodicTicker extends AbstractTicker {
+class Tickers {
+  static Ticker periodic(void Function() callback, Duration period) =>
+      _PeriodicTicker(callback, period);
+  static Ticker dayTimesBased(
+          void Function() callback, Iterable<DayTime> dayTimes) =>
+      _DayTimesTicker(callback, dayTimes);
+}
+
+// implementation
+
+class _PeriodicTicker extends Ticker {
   final Duration _period;
 
-  PeriodicTicker(void Function() callback,
-      {Duration period = const Duration(minutes: 1)})
+  _PeriodicTicker(void Function() callback, Duration period)
       : _period = period,
         super(callback);
 
@@ -42,10 +51,10 @@ class PeriodicTicker extends AbstractTicker {
   DateTime nextTickAt(DateTime now) => now.clampToMinutes().add(_period);
 }
 
-class DayTimesTicker extends AbstractTicker {
+class _DayTimesTicker extends Ticker {
   final Set<DayTime> _dayTimes;
 
-  DayTimesTicker(void Function() callback, Iterable<DayTime> dayTimes)
+  _DayTimesTicker(void Function() callback, Iterable<DayTime> dayTimes)
       : _dayTimes = dayTimes.toSet(),
         super(callback);
 

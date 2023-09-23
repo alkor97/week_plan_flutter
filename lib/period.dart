@@ -6,11 +6,9 @@ class TimeSlot {
 
   const TimeSlot(this.from, this.until);
 
-  bool isActiveAt(DateTime now) {
-    final startTime = from.toDateTimeAt(now);
-    final endTime = until.toDateTimeAt(now);
-    return startTime.isBefore(now) && now.isBefore(endTime);
-  }
+  bool isActiveAt(DateTime now) =>
+      from.toDateTimeAt(now).isBefore(now) &&
+      now.isBefore(until.toDateTimeAt(now));
 
   @override
   bool operator ==(Object other) =>
@@ -20,9 +18,7 @@ class TimeSlot {
   int get hashCode => Object.hash(from, until);
 
   @override
-  String toString() {
-    return "$from - $until";
-  }
+  String toString() => "$from - $until";
 }
 
 class RecessSlot extends TimeSlot {

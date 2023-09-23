@@ -1,17 +1,9 @@
-extension CompareOperators<T> on Comparable<T> {
-  bool operator <=(T other) => compareTo(other) <= 0;
-  bool operator >=(T other) => compareTo(other) >= 0;
-  bool operator <(T other) => compareTo(other) < 0;
-  bool operator >(T other) => compareTo(other) > 0;
-}
-
 class DayTime implements Comparable<DayTime> {
   const DayTime(this.hour, this.minute);
   DayTime.fromTuple((int, int) tuple)
       : hour = tuple.$1,
         minute = tuple.$2;
 
-  factory DayTime.now() => DayTime.of(DateTime.now());
   factory DayTime.of(DateTime dateTime) =>
       DayTime(dateTime.hour, dateTime.minute);
 
@@ -56,22 +48,17 @@ enum WeekDay implements Comparable<WeekDay> {
   factory WeekDay.of(DateTime dateTime) => WeekDay.values[dateTime.weekday - 1];
 }
 
-const _weekDaysPL = [
-  "poniedziałek",
-  "wtorek",
-  "środa",
-  "czwartek",
-  "piątek",
-  "sobota",
-  "niedziela"
-];
-
-String formatWeekDay(WeekDay weekDay) => _weekDaysPL[weekDay.index];
-
 String formatDayTime(DayTime dayTime) => dayTime.toString();
 
 extension DateTimeExtensions on DateTime {
   DateTime previousMidnight() => DateTime(year, month, day);
   DateTime nextMidnight() => previousMidnight().add(const Duration(days: 1));
   DateTime clampToMinutes() => DateTime(year, month, day, hour, minute);
+}
+
+extension CompareOperators<T> on Comparable<T> {
+  bool operator <=(T other) => compareTo(other) <= 0;
+  bool operator >=(T other) => compareTo(other) >= 0;
+  bool operator <(T other) => compareTo(other) < 0;
+  bool operator >(T other) => compareTo(other) > 0;
 }

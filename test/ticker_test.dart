@@ -11,9 +11,9 @@ void main() {
     final earlier = DateTime.now();
     void callback() => expect(DateTime.now().difference(earlier), period);
 
-    AbstractTicker? ticker;
+    Ticker? ticker;
     try {
-      ticker = PeriodicTicker(callback, period: period);
+      ticker = Tickers.periodic(callback, period);
       sleep(period);
     } finally {
       ticker?.cancel();
@@ -25,9 +25,9 @@ void main() {
     const diff = Duration(minutes: 1);
     final tick = now.clampToMinutes();
 
-    AbstractTicker? ticker;
+    Ticker? ticker;
     try {
-      ticker = DayTimesTicker(() {}, [DayTime.of(tick)]);
+      ticker = Tickers.dayTimesBased(() {}, [DayTime.of(tick)]);
       expect(ticker.nextTickAt(tick.subtract(diff)), tick);
       expect(ticker.nextTickAt(tick), tick);
       expect(ticker.nextTickAt(tick.add(diff)), now.nextMidnight());
