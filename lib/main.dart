@@ -213,37 +213,31 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget _weekDayWidget(WeekDay weekDay) =>
       _columnsPadding(_center(_text(formatWeekDay(weekDay), bold: true)));
 
+  PopupMenuItem<int> _switchMenuOption(
+          String title, bool Function() getState, Function(bool) onChange) =>
+      PopupMenuItem<int>(
+          child: Row(
+        children: [
+          Text(title),
+          const Spacer(),
+          StatefulBuilder(
+            builder: (context, doSetState) => Switch(
+                value: getState(),
+                onChanged: (bool value) =>
+                    doSetState(() => setState(() => onChange(value)))),
+          ),
+        ],
+      ));
+
   Widget _popupButton() => PopupMenuButton(
         icon: const Icon(Icons.settings),
         tooltip: "Ustawienia",
         color: _textColor,
         itemBuilder: (context) => [
-          PopupMenuItem<int>(
-              child: Row(
-            children: [
-              const Text("Skrócone lekcje"),
-              const Spacer(),
-              StatefulBuilder(
-                builder: (context, doSetState) => Switch(
-                    value: shortenedTimeSlots,
-                    onChanged: (bool value) => doSetState(
-                        () => setState(() => shortenedTimeSlots = value))),
-              ),
-            ],
-          )),
-          PopupMenuItem<int>(
-              child: Row(
-            children: [
-              const Text("Wszystkie dzwonki"),
-              const Spacer(),
-              StatefulBuilder(
-                builder: (context, doSetState) => Switch(
-                    value: allTimeSlots,
-                    onChanged: (bool value) =>
-                        doSetState(() => setState(() => allTimeSlots = value))),
-              ),
-            ],
-          )),
+          _switchMenuOption("Skrócone lekcje", () => shortenedTimeSlots,
+              (value) => shortenedTimeSlots = value),
+          _switchMenuOption("Wszystkie dzwonki", () => allTimeSlots,
+              (value) => allTimeSlots = value),
           PopupMenuItem<int>(
             child: Text(dataVersion, style: _textTheme.labelSmall),
           )
