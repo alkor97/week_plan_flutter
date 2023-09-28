@@ -1,68 +1,69 @@
-import 'package:week_plan_flutter/model.dart';
 import 'package:week_plan_flutter/time.dart';
 import 'dart:async';
 
 abstract class Ticker {
-  final void Function() _callback;
-  late Timer _timer;
+  DateTime nextTickAt(DateTime now);
+}
 
-  Ticker(void Function() callback) : _callback = callback {
-    _timer = _createTimer(this);
+class PeriodicRunner {
+  final void Function() _callback;
+  final Ticker _ticker;
+  Timer? _timer;
+
+  PeriodicRunner(this._callback, this._ticker) {
+    _timer = _newTimer();
   }
+
+  void cancel() => _timer?.cancel();
 
   void _onTick() {
     _callback();
-    _timer.cancel();
-    _timer = _createTimer(this);
+    cancel();
+    _timer = _newTimer();
   }
 
-  Timer _createTimer(Ticker ticker) {
-    return Timer(nextTick(), () => ticker._onTick());
-  }
-
-  void cancel() => _timer.cancel();
-
-  DateTime nextTickAt(DateTime now);
-
-  Duration nextTick() {
-    final now = DateTime.now();
-    return nextTickAt(now).difference(now);
-  }
+  Timer _newTimer() => Timer(_nextTick(DateTime.now()), _onTick);
+  Duration _nextTick(DateTime now) => _ticker.nextTickAt(now).difference(now);
 }
 
 class Tickers {
-  static Ticker periodic(void Function() callback, Duration period) =>
-      _PeriodicTicker(callback, period);
-  static Ticker dayTimesBased(
-          void Function() callback, Iterable<DayTime> dayTimes) =>
-      _DayTimesTicker(callback, dayTimes);
+  static Ticker fixed(Duration period) => _FixedTicker(period);
+  static Ticker byDayTimes(Map<WeekDay, Iterable<DayTime>> dayTimes) =>
+      _WeekPlanTicker(dayTimes);
 }
 
 // implementation
 
-class _PeriodicTicker extends Ticker {
+class _FixedTicker extends Ticker {
   final Duration _period;
-
-  _PeriodicTicker(void Function() callback, Duration period)
-      : _period = period,
-        super(callback);
-
+  _FixedTicker(this._period);
   @override
   DateTime nextTickAt(DateTime now) => now.clampToMinutes().add(_period);
 }
 
-class _DayTimesTicker extends Ticker {
-  final Set<DayTime> _dayTimes;
-
-  _DayTimesTicker(void Function() callback, Iterable<DayTime> dayTimes)
-      : _dayTimes = dayTimes.toSet(),
-        super(callback);
+class _WeekPlanTicker extends Ticker {
+  static const int minutesInDay = 24 * 60;
+  final List<int> _timePoints = List.empty(growable: true);
+  _WeekPlanTicker(Map<WeekDay, Iterable<DayTime>> timePoints) {
+    timePoints.forEach((weekDay, dayTimes) {
+      final base = weekDay.index * minutesInDay;
+      _timePoints.add(base); // add midnights as well
+      for (final dayTime in dayTimes) {
+        _timePoints.add(base + dayTime.inMinutes);
+      }
+    });
+    _timePoints.sort();
+  }
 
   @override
   DateTime nextTickAt(DateTime now) {
-    final currentDayTime = DayTime.of(now);
-    final nextTick =
-        _dayTimes.firstWhereOrNull((dayTime) => dayTime >= currentDayTime);
-    return nextTick != null ? nextTick.toDateTimeAt(now) : now.nextMidnight();
+    final epoch = _lastMondayMidnight(now);
+    final minutes = now.difference(epoch).inMinutes;
+    final nextTick = _timePoints.firstWhere((element) => element >= minutes,
+        orElse: () => 7 * minutesInDay + _timePoints.first);
+    return epoch.add(Duration(minutes: nextTick));
   }
+
+  DateTime _lastMondayMidnight(DateTime now) =>
+      now.previousMidnight().subtract(Duration(days: WeekDay.of(now).index));
 }

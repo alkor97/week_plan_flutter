@@ -75,9 +75,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   final DataProvider dataProvider = DataProviders.remote();
   bool shortenedTimeSlots = false;
-  dynamic weekPlanData;
+  late PlanData weekPlanData;
   DateTime time = currentTime;
-  late Ticker ticker;
+  late PeriodicRunner runner;
   DateTime? dataTimeStamp;
 
   String get dataVersion =>
@@ -88,7 +88,8 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     weekPlanData = PlanProviders.dummy().getPlanData(on: _timeSlots);
     dataProvider.get().then(_handleDataResponse).onError(_handleError);
-    ticker = Tickers.periodic(_updateCurrentTime, const Duration(minutes: 1));
+    runner = PeriodicRunner(
+        _updateCurrentTime, Tickers.fixed(const Duration(minutes: 1)));
   }
 
   List<TimeSlot> get _timeSlots => getTimeSlots(shortened: shortenedTimeSlots);
@@ -111,7 +112,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void dispose() {
-    ticker.cancel();
+    runner.cancel();
     super.dispose();
   }
 
@@ -259,19 +260,15 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
             )),
             PopupMenuItem<int>(
-              child: Text("Wersja danych\n$dataVersion"),
+              child: Text(dataVersion, style: _textTheme.labelSmall),
             )
           ];
         },
       );
 
   List<TableRow> _createRows() {
-    if (weekPlanData == null) {
-      return [];
-    }
-    final weekPlan = WeekPlanImpl.create(
-        getTimeSlots(shortened: shortenedTimeSlots), weekPlanData,
-        includeRecess: true);
+    final weekPlan = WeekPlanProvider()
+        .from(weekPlanData, getTimeSlots(shortened: shortenedTimeSlots));
     final weekDays = weekPlan.weekDays;
     final List<TableRow> rows = [
       TableRow(children: [

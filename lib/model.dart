@@ -27,7 +27,7 @@ abstract class WeekPlan {
 
 class WeekPlanProvider {
   WeekPlan from(PlanData data, List<TimeSlot> timeSlots) =>
-      WeekPlanImpl.create(timeSlots, data);
+      _WeekPlanImpl(timeSlots, data, includeRecess: true);
 }
 
 typedef PlanData = Map<WeekDay, Map<int, SlotContent>>;
@@ -55,29 +55,22 @@ class _Key {
   int get hashCode => Object.hash(weekDay, timeSlot);
 }
 
-@visibleForTesting
-class WeekPlanImpl implements WeekPlan {
+class _WeekPlanImpl implements WeekPlan {
   @override
-  final Iterable<WeekDay> weekDays;
+  late final Iterable<WeekDay> weekDays;
   @override
-  final Iterable<TimeSlot> timeSlots;
-  final Map<_Key, SlotContent> _data;
+  late final Iterable<TimeSlot> timeSlots;
+  late final Map<_Key, SlotContent> _data;
 
-  const WeekPlanImpl(this.weekDays, this.timeSlots, this._data);
-
-  @override
-  SlotContent? get({required WeekDay on, required TimeSlot at}) =>
-      _data[_Key(on, at)];
-
-  factory WeekPlanImpl.create(
-      List<TimeSlot> timeSlots, Map<WeekDay, Map<int, SlotContent>> plan,
+  _WeekPlanImpl(
+      List<TimeSlot> inputSlots, Map<WeekDay, Map<int, SlotContent>> plan,
       {bool includeRecess = false}) {
-    assert(timeSlots.isNotEmpty);
+    assert(inputSlots.isNotEmpty);
 
     WeekDay minimal(WeekDay a, WeekDay b) => a.index < b.index ? a : b;
     WeekDay maximal(WeekDay a, WeekDay b) => a.index > b.index ? a : b;
 
-    int minIndex = timeSlots.length - 1;
+    int minIndex = inputSlots.length - 1;
     int maxIndex = 0;
 
     WeekDay minDay = WeekDay.sunday;
@@ -98,24 +91,28 @@ class WeekPlanImpl implements WeekPlan {
         maxIndex = max(maxIndex, index);
 
         final value = day[index]!;
-        weekPlan[_Key(weekDay, timeSlots[index])] = value;
+        weekPlan[_Key(weekDay, inputSlots[index])] = value;
       }
     }
 
     // remove unused periods
-    final limitedPeriods = timeSlots.indexed
+    final limitedPeriods = inputSlots.indexed
         .where((element) => minIndex <= element.$1 && element.$1 <= maxIndex)
         .map((e) => e.$2);
 
-    return WeekPlanImpl(
-        // remove unused days
-        WeekDay.values
-            .where((element) => minDay <= element && element <= maxDay)
-            .toList(growable: false),
+    weekDays = WeekDay.values
+        .where((element) => minDay <= element && element <= maxDay)
+        .toList(growable: false);
+    timeSlots =
         (includeRecess ? deduceRecessSlots(limitedPeriods) : limitedPeriods)
-            .toList(growable: false),
-        weekPlan);
+            .toList(growable: false);
+
+    _data = weekPlan;
   }
+
+  @override
+  SlotContent? get({required WeekDay on, required TimeSlot at}) =>
+      _data[_Key(on, at)];
 }
 
 class _DefaultPlanProvider extends PlanProvider {

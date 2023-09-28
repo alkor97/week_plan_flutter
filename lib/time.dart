@@ -11,9 +11,9 @@ class DayTime implements Comparable<DayTime> {
   final int minute;
 
   @override
-  int compareTo(DayTime other) => _toInt - other._toInt;
+  int compareTo(DayTime other) => inMinutes - other.inMinutes;
 
-  int get _toInt => (hour % 24) * 60 + (minute % 60);
+  int get inMinutes => (hour % 24) * 60 + (minute % 60);
 
   @override
   bool operator ==(Object other) =>

@@ -1,38 +1,32 @@
-import 'dart:io';
-
 import 'package:week_plan_flutter/ticker.dart';
 import 'package:week_plan_flutter/time.dart';
 
 import 'package:test/test.dart';
 
 void main() {
-  test('test periodic ticker', () {
-    const period = Duration(seconds: 2);
-    final earlier = DateTime.now();
-    void callback() => expect(DateTime.now().difference(earlier), period);
-
-    Ticker? ticker;
-    try {
-      ticker = Tickers.periodic(callback, period);
-      sleep(period);
-    } finally {
-      ticker?.cancel();
-    }
+  test('test fixed ticker', () {
+    final ticker = Tickers.fixed(const Duration(hours: 1));
+    expect(ticker.nextTickAt(DateTime(2023, 9, 23, 13)),
+        DateTime(2023, 9, 23, 14));
   });
 
   test('test day times ticker', () {
-    final now = DateTime.now();
-    const diff = Duration(minutes: 1);
-    final tick = now.clampToMinutes();
+    final dayTimes = {
+      WeekDay.monday: [const DayTime(12, 00), const DayTime(14, 00)],
+    };
 
-    Ticker? ticker;
-    try {
-      ticker = Tickers.dayTimesBased(() {}, [DayTime.of(tick)]);
-      expect(ticker.nextTickAt(tick.subtract(diff)), tick);
-      expect(ticker.nextTickAt(tick), tick);
-      expect(ticker.nextTickAt(tick.add(diff)), now.nextMidnight());
-    } finally {
-      ticker?.cancel();
-    }
+    final ticker = Tickers.byDayTimes(dayTimes);
+
+    final saturday14 = DateTime(2023, 9, 23, 14);
+    final monday00 = DateTime(2023, 9, 25);
+    expect(ticker.nextTickAt(saturday14), monday00);
+
+    final monday10 = DateTime(2023, 9, 25, 10);
+    final monday12 = DateTime(2023, 9, 25, 12);
+    expect(ticker.nextTickAt(monday10), monday12);
+
+    final monday13 = DateTime(2023, 9, 25, 13);
+    final monday14 = DateTime(2023, 9, 25, 14);
+    expect(ticker.nextTickAt(monday13), monday14);
   });
 }
