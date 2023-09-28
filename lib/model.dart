@@ -26,8 +26,10 @@ abstract class WeekPlan {
 }
 
 class WeekPlanProvider {
-  WeekPlan from(PlanData data, List<TimeSlot> timeSlots) =>
-      _WeekPlanImpl(timeSlots, data, includeRecess: true);
+  WeekPlan from(PlanData data, List<TimeSlot> timeSlots,
+          {bool allTimeSlots = false}) =>
+      _WeekPlanImpl(timeSlots, data,
+          includeRecess: true, allTimeSlots: allTimeSlots);
 }
 
 typedef PlanData = Map<WeekDay, Map<int, SlotContent>>;
@@ -64,7 +66,7 @@ class _WeekPlanImpl implements WeekPlan {
 
   _WeekPlanImpl(
       List<TimeSlot> inputSlots, Map<WeekDay, Map<int, SlotContent>> plan,
-      {bool includeRecess = false}) {
+      {bool includeRecess = false, bool allTimeSlots = false}) {
     assert(inputSlots.isNotEmpty);
 
     WeekDay minimal(WeekDay a, WeekDay b) => a.index < b.index ? a : b;
@@ -96,9 +98,12 @@ class _WeekPlanImpl implements WeekPlan {
     }
 
     // remove unused periods
-    final limitedPeriods = inputSlots.indexed
-        .where((element) => minIndex <= element.$1 && element.$1 <= maxIndex)
-        .map((e) => e.$2);
+    final limitedPeriods = allTimeSlots
+        ? inputSlots
+        : inputSlots.indexed
+            .where(
+                (element) => minIndex <= element.$1 && element.$1 <= maxIndex)
+            .map((e) => e.$2);
 
     weekDays = WeekDay.values
         .where((element) => minDay <= element && element <= maxDay)
