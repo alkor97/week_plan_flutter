@@ -28,7 +28,6 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const MyHomePage(),
-      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -172,16 +171,14 @@ class _MyHomePageState extends State<MyHomePage> {
         padding: padding,
         height: _rowHeight,
         color: _backgroundColor(highlighted),
-        alignment: Alignment.centerRight,
+        alignment: Alignment.centerLeft,
         child: _dayTime(dayTime),
       );
 
-  Widget _dayTimeRow(TimeSlot timeSlot, {bool highlighted = false}) => Row(
-        children: [
+  Iterable<Widget> _dayTimeColumns(TimeSlot timeSlot, {bool highlighted = false}) => [
           _dayTimeContainer(timeSlot.from, _dayTimePadding, highlighted),
           _dayTimeContainer(timeSlot.until, _dayTimePadding, highlighted),
-        ],
-      );
+    ];
 
   Widget _row(String name, String location, {bool highlighted = false}) => Row(
         children: [
@@ -195,9 +192,9 @@ class _MyHomePageState extends State<MyHomePage> {
         color: _backgroundColor(highlighted),
       );
 
-  Widget _rowSeparator({bool highligted = false}) => Container(
+  Widget _rowSeparator({bool highlighted = false}) => Container(
         height: _rowSeparatorHeight,
-        color: _backgroundColor(highligted),
+        color: _backgroundColor(highlighted),
       );
 
   Widget _center(Widget widget) => Container(
@@ -252,6 +249,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final List<TableRow> rows = [
       TableRow(children: [
         Wrap(children: [_popupButton()]),
+        _emptyRow(),
         ...weekDays.map(_weekDayWidget)
       ])
     ];
@@ -263,14 +261,15 @@ class _MyHomePageState extends State<MyHomePage> {
       if (timeSlot is RecessSlot) {
         // separator row
         rows.add(TableRow(children: [
-          _rowSeparator(highligted: isActive),
+          _rowSeparator(highlighted: isActive),
+          _rowSeparator(highlighted: isActive),
           ...weekDays.map(
-              (e) => _rowSeparator(highligted: isActive && e == currentWeekDay))
+              (e) => _rowSeparator(highlighted: isActive && e == currentWeekDay))
         ]));
       } else {
         // content row
         rows.add(TableRow(children: [
-          _dayTimeRow(timeSlot, highlighted: isActive),
+          ..._dayTimeColumns(timeSlot, highlighted: isActive),
           ...weekDays.map((weekDay) {
             final content = weekPlan.get(on: weekDay, at: timeSlot);
             final highlight = isActive && weekDay == currentWeekDay;
@@ -291,7 +290,7 @@ class _MyHomePageState extends State<MyHomePage> {
       backgroundColor: _normalColor,
       body: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: SingleChildScrollView(
+        child: SafeArea(child: SingleChildScrollView(
           scrollDirection: Axis.vertical,
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -302,7 +301,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 children: _createRows()),
           ),
         ),
-      ),
+      ),),
     );
   }
 }
