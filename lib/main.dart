@@ -39,9 +39,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final _rowHeightMultiplier = 1.5;
-  final _rowSeparatorMultiplier = 0.25;
-
   final DataProvider dataProvider = DataProviders.remote();
   bool shortenedTimeSlots = false;
   bool allTimeSlots = false;
@@ -111,9 +108,9 @@ class _MyHomePageState extends State<MyHomePage> {
     return fontSize! * height!;
   }
 
-  double get _rowHeight => _rowHeightMultiplier * _textHeight();
+  double get _rowHeight => _textHeight() * 1.2;
 
-  double get _rowSeparatorHeight => _rowHeight * _rowSeparatorMultiplier;
+  double get _rowSeparatorHeight => _rowHeight / 8.0;
 
   TextStyle? _textStyle({bool smaller = false, bool bold = false}) =>
       (smaller ? _smallerTextStyle(bold: bold) : _defaultTextStyle(bold: bold))
@@ -122,13 +119,13 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget _text(String text, {bool smaller = false, bool bold = false}) =>
       Text(text, style: _textStyle(smaller: smaller, bold: bold));
 
-  double get _defaultPadding => _rowHeight / 6.0;
+  double get _defaultPadding => _rowHeight / 8.0;
 
-  double get _verticalPadding => _rowHeight / 12.0;
+  double get _verticalPadding => 0.0;
 
   double get _smallerPadding => _rowHeight / 24.0;
 
-  double get _columnPadding => _rowHeight / 8.0;
+  double get _columnPadding => _rowHeight / 4.0;
 
   EdgeInsets get _leftPadding => EdgeInsets.fromLTRB(
       _defaultPadding, _verticalPadding, _smallerPadding, _verticalPadding);
@@ -142,24 +139,22 @@ class _MyHomePageState extends State<MyHomePage> {
   Color _backgroundColor(bool highlighted) =>
       highlighted ? _highlightedColor : _normalColor;
 
-  Widget _left(String text, {bool highlighted = false}) => Expanded(
+  Widget _subject(String text, {bool highlighted = false}) => Expanded(
           child: Container(
         padding: _leftPadding,
         height: _rowHeight,
         color: _backgroundColor(highlighted),
-        alignment: Alignment.centerRight,
+        alignment: Alignment.topRight,
         child: _text(text),
       ));
 
-  Widget _right(String text,
-          {bool highlighted = false,
-          bool smaller = false,
-          Alignment alignment = Alignment.bottomLeft}) =>
+  Widget _location(String text,
+          {bool highlighted = false, bool smaller = false}) =>
       Container(
         padding: _rightPadding,
         height: _rowHeight,
         color: _backgroundColor(highlighted),
-        alignment: alignment,
+        alignment: Alignment.bottomLeft,
         child: _text(text, smaller: smaller),
       );
 
@@ -175,15 +170,17 @@ class _MyHomePageState extends State<MyHomePage> {
         child: _dayTime(dayTime),
       );
 
-  Iterable<Widget> _dayTimeColumns(TimeSlot timeSlot, {bool highlighted = false}) => [
-          _dayTimeContainer(timeSlot.from, _dayTimePadding, highlighted),
-          _dayTimeContainer(timeSlot.until, _dayTimePadding, highlighted),
-    ];
+  Iterable<Widget> _dayTimeColumns(TimeSlot timeSlot,
+          {bool highlighted = false}) =>
+      [
+        _dayTimeContainer(timeSlot.from, _dayTimePadding, highlighted),
+        _dayTimeContainer(timeSlot.until, _dayTimePadding, highlighted),
+      ];
 
   Widget _row(String name, String location, {bool highlighted = false}) => Row(
         children: [
-          _left(name, highlighted: highlighted),
-          _right(location, highlighted: highlighted, smaller: true),
+          _subject(name, highlighted: highlighted),
+          _location(location, highlighted: highlighted, smaller: true),
         ],
       );
 
@@ -197,18 +194,19 @@ class _MyHomePageState extends State<MyHomePage> {
         color: _backgroundColor(highlighted),
       );
 
-  Widget _center(Widget widget) => Container(
-        color: _normalColor,
-        alignment: Alignment.center,
-        padding: EdgeInsets.all(_defaultPadding),
-        child: widget,
+  Widget _cellPadding(Widget widget, {bool highlighted = false}) => TableCell(
+        verticalAlignment: TableCellVerticalAlignment.fill,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: _columnPadding),
+          alignment: Alignment.center,
+          color: _backgroundColor(highlighted),
+          child: widget,
+        ),
       );
 
-  Widget _columnsPadding(Widget widget) => Padding(
-      padding: EdgeInsets.symmetric(horizontal: _columnPadding), child: widget);
-
-  Widget _weekDayWidget(WeekDay weekDay) =>
-      _columnsPadding(_center(_text(formatWeekDay(weekDay), bold: true)));
+  Widget _weekDayWidget(WeekDay weekDay, {bool highlighted = false}) =>
+      _cellPadding(_text(formatWeekDay(weekDay), bold: true),
+          highlighted: highlighted);
 
   PopupMenuItem<int> _switchMenuOption(
           String title, bool Function() getState, Function(bool) onChange) =>
@@ -242,6 +240,9 @@ class _MyHomePageState extends State<MyHomePage> {
       );
 
   List<TableRow> _createRows() {
+    final now = DateTime.now();
+    final currentWeekDay = WeekDay.of(now);
+
     final weekPlan = WeekPlanProvider().from(
         weekPlanData, getTimeSlots(shortened: shortenedTimeSlots),
         allTimeSlots: allTimeSlots);
@@ -250,12 +251,11 @@ class _MyHomePageState extends State<MyHomePage> {
       TableRow(children: [
         Wrap(children: [_popupButton()]),
         _emptyRow(),
-        ...weekDays.map(_weekDayWidget)
+        ...weekDays
+            .map((e) => _weekDayWidget(e, highlighted: e == currentWeekDay))
       ])
     ];
 
-    final now = DateTime.now();
-    final currentWeekDay = WeekDay.of(now);
     for (final timeSlot in weekPlan.timeSlots) {
       final isActive = timeSlot.isActiveAt(now);
       if (timeSlot is RecessSlot) {
@@ -263,8 +263,8 @@ class _MyHomePageState extends State<MyHomePage> {
         rows.add(TableRow(children: [
           _rowSeparator(highlighted: isActive),
           _rowSeparator(highlighted: isActive),
-          ...weekDays.map(
-              (e) => _rowSeparator(highlighted: isActive && e == currentWeekDay))
+          ...weekDays.map((e) =>
+              _rowSeparator(highlighted: isActive && e == currentWeekDay))
         ]));
       } else {
         // content row
@@ -273,7 +273,7 @@ class _MyHomePageState extends State<MyHomePage> {
           ...weekDays.map((weekDay) {
             final content = weekPlan.get(on: weekDay, at: timeSlot);
             final highlight = isActive && weekDay == currentWeekDay;
-            return _columnsPadding(content != null
+            return _cellPadding(content != null
                 ? _row(content.subject, content.location,
                     highlighted: highlight)
                 : _emptyRow(highlighted: highlight));
@@ -288,20 +288,22 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _normalColor,
-      body: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SafeArea(child: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Table(
-                border: TableBorder.all(color: _normalColor),
-                defaultColumnWidth: const IntrinsicColumnWidth(),
-                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                children: _createRows()),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Table(
+                  border: TableBorder.all(color: _normalColor),
+                  defaultColumnWidth: const IntrinsicColumnWidth(),
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                  children: _createRows()),
+            ),
           ),
         ),
-      ),),
+      ),
     );
   }
 }
