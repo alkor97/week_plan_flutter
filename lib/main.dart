@@ -39,9 +39,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final _rowHeightMultiplier = 1.5;
-  final _rowSeparatorMultiplier = 0.25;
-
   final DataProvider dataProvider = DataProviders.remote();
   bool shortenedTimeSlots = false;
   bool allTimeSlots = false;
@@ -111,9 +108,9 @@ class _MyHomePageState extends State<MyHomePage> {
     return fontSize! * height!;
   }
 
-  double get _rowHeight => _rowHeightMultiplier * _textHeight();
+  double get _rowHeight => _textHeight() * 1.2;
 
-  double get _rowSeparatorHeight => _rowHeight * _rowSeparatorMultiplier;
+  double get _rowSeparatorHeight => _rowHeight / 6.0;
 
   TextStyle? _textStyle({bool smaller = false, bool bold = false}) =>
       (smaller ? _smallerTextStyle(bold: bold) : _defaultTextStyle(bold: bold))
@@ -122,13 +119,13 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget _text(String text, {bool smaller = false, bool bold = false}) =>
       Text(text, style: _textStyle(smaller: smaller, bold: bold));
 
-  double get _defaultPadding => _rowHeight / 6.0;
+  double get _defaultPadding => _rowHeight / 8.0;
 
-  double get _verticalPadding => _rowHeight / 12.0;
+  double get _verticalPadding => 0.0;
 
   double get _smallerPadding => _rowHeight / 24.0;
 
-  double get _columnPadding => _rowHeight / 8.0;
+  double get _columnPadding => _rowHeight / 4.0;
 
   EdgeInsets get _leftPadding => EdgeInsets.fromLTRB(
       _defaultPadding, _verticalPadding, _smallerPadding, _verticalPadding);
@@ -142,18 +139,16 @@ class _MyHomePageState extends State<MyHomePage> {
   Color _backgroundColor(bool highlighted) =>
       highlighted ? _highlightedColor : _normalColor;
 
-  Widget _left(String text) => Expanded(
+  Widget _subject(String text) => Expanded(
           child: Container(
         padding: _leftPadding,
         height: _rowHeight,
-        alignment: Alignment.centerRight,
+        alignment: Alignment.topRight,
         child: _text(text),
       ));
 
-  Widget _right(String text,
-          {
-          bool smaller = false,
-          Alignment alignment = Alignment.bottomLeft}) =>
+  Widget _location(String text,
+          {bool smaller = false, Alignment alignment = Alignment.bottomLeft}) =>
       Container(
         padding: _rightPadding,
         height: _rowHeight,
@@ -174,14 +169,14 @@ class _MyHomePageState extends State<MyHomePage> {
       );
 
   Iterable<Widget> _dayTimeColumns(TimeSlot timeSlot, bool highlighted) => [
-          _dayTimeContainer(timeSlot.from, _dayTimePadding, highlighted),
-          _dayTimeContainer(timeSlot.until, _dayTimePadding, highlighted),
-    ];
+        _dayTimeContainer(timeSlot.from, _dayTimePadding, highlighted),
+        _dayTimeContainer(timeSlot.until, _dayTimePadding, highlighted),
+      ];
 
   Widget _row(String name, String location) => Row(
         children: [
-          _left(name),
-          _right(location, smaller: true),
+          _subject(name),
+          _location(location, smaller: true),
         ],
       );
 
@@ -199,12 +194,13 @@ class _MyHomePageState extends State<MyHomePage> {
       );
 
   Widget _cellPadding(Widget widget, bool highlighted) => Container(
-    color: _backgroundColor(highlighted),
-    child: Padding(
-      padding: EdgeInsets.symmetric(horizontal: _columnPadding), child: widget));
+      color: _backgroundColor(highlighted),
+      child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: _columnPadding),
+          child: widget));
 
-  Widget _weekDayWidget(WeekDay weekDay, bool highlighted) =>
-      _cellPadding(_center(_text(formatWeekDay(weekDay), bold: true)), highlighted);
+  Widget _weekDayWidget(WeekDay weekDay, bool highlighted) => _cellPadding(
+      _center(_text(formatWeekDay(weekDay), bold: true)), highlighted);
 
   PopupMenuItem<int> _switchMenuOption(
           String title, bool Function() getState, Function(bool) onChange) =>
@@ -238,7 +234,8 @@ class _MyHomePageState extends State<MyHomePage> {
       );
 
   List<TableRow> _createRows() {
-    final now = DateTime.now();
+    //final now = DateTime.now();
+    final now = new DateTime(2023, 10, 11, 9, 37);
     final currentWeekDay = WeekDay.of(now);
 
     final weekPlan = WeekPlanProvider().from(
@@ -260,8 +257,7 @@ class _MyHomePageState extends State<MyHomePage> {
         rows.add(TableRow(children: [
           _rowSeparator(isActive),
           _rowSeparator(isActive),
-          ...weekDays.map(
-              (e) => _rowSeparator(isActive && e == currentWeekDay))
+          ...weekDays.map((e) => _rowSeparator(isActive && e == currentWeekDay))
         ]));
       } else {
         // content row
@@ -270,9 +266,11 @@ class _MyHomePageState extends State<MyHomePage> {
           ...weekDays.map((weekDay) {
             final content = weekPlan.get(on: weekDay, at: timeSlot);
             final highlight = isActive && weekDay == currentWeekDay;
-            return _cellPadding(content != null
-                ? _row(content.subject, content.location)
-                : _emptyRow(), highlight);
+            return _cellPadding(
+                content != null
+                    ? _row(content.subject, content.location)
+                    : _emptyRow(),
+                highlight);
           })
         ]));
       }
@@ -286,18 +284,20 @@ class _MyHomePageState extends State<MyHomePage> {
       backgroundColor: _normalColor,
       body: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: SafeArea(child: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Table(
-                border: TableBorder.all(color: _normalColor, width: 0.1),
-                defaultColumnWidth: const IntrinsicColumnWidth(),
-                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                children: _createRows()),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Table(
+                  border: TableBorder.all(color: _normalColor),
+                  defaultColumnWidth: const IntrinsicColumnWidth(),
+                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                  children: _createRows()),
+            ),
           ),
         ),
-      ),),
+      ),
     );
   }
 }
