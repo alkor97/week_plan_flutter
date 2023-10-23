@@ -46,6 +46,7 @@ class _MyHomePageState extends State<MyHomePage> {
   DateTime time = currentTime;
   late PeriodicRunner runner;
   DateTime? dataTimeStamp;
+  bool showIndices = false;
 
   String get dataVersion =>
       (dataTimeStamp?.toString() ?? "⸺").replaceFirst(RegExp(r"\.000Z"), "Z");
@@ -156,6 +157,11 @@ class _MyHomePageState extends State<MyHomePage> {
         child: _text(text, smaller: smaller),
       );
 
+  Iterable<Widget> _index(TimeSlot timeSlot, bool showIndices) =>
+      timeSlot is IndexedTimeSlot && showIndices
+          ? [Container(alignment: Alignment.center, child: _text(timeSlot.index.toString()))]
+          : [];
+
   Widget _dayTime(DayTime dayTime) => _text(formatDayTime(dayTime), bold: true);
 
   Widget _dayTimeContainer(
@@ -227,6 +233,8 @@ class _MyHomePageState extends State<MyHomePage> {
               (value) => shortenedTimeSlots = value),
           _switchMenuOption("Wszystkie dzwonki", () => allTimeSlots,
               (value) => allTimeSlots = value),
+          _switchMenuOption("Numery lekcji", () => showIndices,
+              (value) => showIndices = value),
           PopupMenuItem<int>(
             child: Text(dataVersion, style: _textTheme.labelSmall),
           )
@@ -234,8 +242,7 @@ class _MyHomePageState extends State<MyHomePage> {
       );
 
   List<TableRow> _createRows() {
-    //final now = DateTime.now();
-    final now = new DateTime(2023, 10, 11, 9, 37);
+    final now = DateTime.now();
     final currentWeekDay = WeekDay.of(now);
 
     final weekPlan = WeekPlanProvider().from(
@@ -245,7 +252,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final List<TableRow> rows = [
       TableRow(children: [
         Wrap(children: [_popupButton()]),
-        _emptyRow(),
+        ...List.generate(showIndices ? 2 : 1, (index) => _emptyRow()),
         ...weekDays.map((e) => _weekDayWidget(e, e == currentWeekDay))
       ])
     ];
@@ -255,13 +262,14 @@ class _MyHomePageState extends State<MyHomePage> {
       if (timeSlot is RecessSlot) {
         // separator row
         rows.add(TableRow(children: [
-          _rowSeparator(isActive),
-          _rowSeparator(isActive),
+          ...List.generate(
+              showIndices ? 3 : 2, (index) => _rowSeparator(isActive)),
           ...weekDays.map((e) => _rowSeparator(isActive && e == currentWeekDay))
         ]));
       } else {
         // content row
         rows.add(TableRow(children: [
+          ..._index(timeSlot, showIndices),
           ..._dayTimeColumns(timeSlot, isActive),
           ...weekDays.map((weekDay) {
             final content = weekPlan.get(on: weekDay, at: timeSlot);

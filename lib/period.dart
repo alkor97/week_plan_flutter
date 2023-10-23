@@ -25,6 +25,11 @@ class RecessSlot extends TimeSlot {
   RecessSlot(super.from, super.until);
 }
 
+class IndexedTimeSlot extends TimeSlot {
+  int index;
+  IndexedTimeSlot(DayTime from, DayTime to, this.index): super(from, to);
+}
+
 Iterable<TimeSlot> deduceRecessSlots(Iterable<TimeSlot> timeSlots) {
   assert(timeSlots.isNotEmpty);
   List<TimeSlot> result = [];

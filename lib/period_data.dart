@@ -46,6 +46,6 @@ const List<IntPairPair> _shortenedTimeSlots = [
 ];
 
 @visibleForTesting
-Iterable<TimeSlot> parseTimeSlots(Iterable<IntPairPair> input) => input
-    .map((e) => TimeSlot(DayTime.fromTuple(e.$1), DayTime.fromTuple(e.$2)))
+Iterable<TimeSlot> parseTimeSlots(Iterable<IntPairPair> input) => input.indexed
+    .map((e) => IndexedTimeSlot(DayTime.fromTuple(e.$2.$1), DayTime.fromTuple(e.$2.$2), e.$1))
     .toList(growable: false);
