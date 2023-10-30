@@ -3,12 +3,14 @@ import 'package:week_plan_flutter/model.dart';
 import 'package:week_plan_flutter/period.dart';
 import 'package:week_plan_flutter/ticker.dart';
 import 'package:week_plan_flutter/time.dart';
+import 'package:week_plan_flutter/version.dart';
 
 import 'package:week_plan_flutter/period_data.dart';
 import 'package:week_plan_flutter/time_data.dart';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
+import 'package:flutter/services.dart';
 
 const _normalColor = Color(0xff3700b3);
 const _textColor = Color(0xfffefefe);
@@ -47,6 +49,7 @@ class _MyHomePageState extends State<MyHomePage> {
   late PeriodicRunner runner;
   DateTime? dataTimeStamp;
   bool showIndices = false;
+  late String appVersion;
 
   String get dataVersion =>
       (dataTimeStamp?.toString() ?? "⸺").replaceFirst(RegExp(r"\.000Z"), "Z");
@@ -58,6 +61,7 @@ class _MyHomePageState extends State<MyHomePage> {
     dataProvider.get().then(_handleDataResponse).onError(_handleError);
     runner = PeriodicRunner(
         _updateCurrentTime, Tickers.fixed(const Duration(minutes: 1)));
+    getGitVersion().then((value) => appVersion = value);
   }
 
   List<TimeSlot> get _timeSlots => getTimeSlots(shortened: shortenedTimeSlots);
@@ -159,7 +163,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Iterable<Widget> _index(TimeSlot timeSlot, bool showIndices) =>
       timeSlot is IndexedTimeSlot && showIndices
-          ? [Container(alignment: Alignment.center, child: _text(timeSlot.index.toString()))]
+          ? [
+              Container(
+                  alignment: Alignment.center,
+                  child: _text(timeSlot.index.toString()))
+            ]
           : [];
 
   Widget _dayTime(DayTime dayTime) => _text(formatDayTime(dayTime), bold: true);
@@ -236,7 +244,11 @@ class _MyHomePageState extends State<MyHomePage> {
           _switchMenuOption("Numery lekcji", () => showIndices,
               (value) => showIndices = value),
           PopupMenuItem<int>(
-            child: Text(dataVersion, style: _textTheme.labelSmall),
+            child: Text("data: $dataVersion", style: _textTheme.labelSmall),
+          ),
+          PopupMenuItem<int>(
+            child: Text("app: $appVersion", style: _textTheme.labelSmall),
+            onTap: () => Clipboard.setData(ClipboardData(text: appVersion)),
           )
         ],
       );
